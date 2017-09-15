@@ -1,9 +1,5 @@
 package be.quodlibet.dynamodbtocsv4j;
 
-
-// As of version 1.10, AWS JDK dropped dependency of org.json
-//import com.amazonaws.util.json.JSONException;
-//import com.amazonaws.util.json.JSONObject;
 import org.json.JSONException;
 import org.json.JSONObject;
 import java.io.IOException;

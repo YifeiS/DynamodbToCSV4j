@@ -11,9 +11,6 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
-//import com.amazonaws.util.json.JSONArray;
-//import com.amazonaws.util.json.JSONException;
-//import com.amazonaws.util.json.JSONObject;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -38,12 +35,9 @@ public class d2csv
 
     public d2csv(JSONObject config)
     {
-
-//        List<String> queriedCol = new ArrayList<>();
-//        Collections.addAll(queriedCol,"orderId", "eaterId", "orderCreatedTime", "chefId", "price.*");  //TODO remove this ?
-        List<String> universalSchemasLiterial = new ArrayList<>();  // NOTE does not support regex
-        Collections.addAll(universalSchemasLiterial,"chefId", "eaterId", "orderId", "orderCreatedTime", "chefLocation.lat", "chefLocation.lng", "shippingAddress.lat", "shippingAddress.lng", "orderDeliverTime", "orderStatus", "orderStatusModifiedTime", "price.accountType", "price.chefEarning", "price.chefGainDetail.gain", "price.chefGainDetail.saleTax", "price.chefGainDetail.totalCharged", "price.couponValue", "price.couponValueUsed", "price.deliveryFee", "price.grandTotal", "price.serviceFee", "price.serviceFeeRate", "price.supposeServiceFeeFromChef", "price.taxDetail.chefGainSalesTax", "price.taxDetail.taxRate", "price.taxDetail.yumsoGainSalesTax", "price.yumsoGainDetail.chefSalesTaxOwnedByYumso", "price.yumsoGainDetail.gain", "price.yumsoGainDetail.salesTax", "price.yumsoGainDetail.totalCharged", "price.yumsoSupposeGain");
-//        List<String> doNotInclude = new ArrayList<>(); // TODO: (yifeis) 20170905 exclude these from queriedCol TODO remove this?
+        // output all columns if left blank, otherwise output only columns that matches the regex in the list
+        List<String> queriedColList = new ArrayList<>();
+    //    Collections.addAll(queriedColList,"id", "name", "contactInfo.*");
         String timeStamp = "[" + new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date()) + "]";
 
 
@@ -52,22 +46,10 @@ public class d2csv
             try
             {
                 BasicAWSCredentials awsCreds = new BasicAWSCredentials((String) config.get("accessKeyId"), (String) config.get("secretAccessKey"));
-                /*
-                 * https://aws.amazon.com/blogs/developer/client-constructors-now-deprecated/
-                 * Client Constructors Now Deprecated in the AWS SDK for Java
-                 * http://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/credentials.html
-                 * Working with AWS Credentials
-                 *
-                 */
-//                AmazonDynamoDBClient client = new AmazonDynamoDBClient(awsCreds);
-//                Region r = Region.getRegion(Regions.fromName((String) config.get("region")));
-//                client.setRegion(r);
-//                //DynamoDB dynamoDB = new DynamoDB(client);
-
                 AmazonDynamoDBClientBuilder clientBuilder = AmazonDynamoDBClientBuilder.standard()
                         .withRegion(Regions.US_WEST_2)
                         .withCredentials(new AWSStaticCredentialsProvider(awsCreds));
-                AmazonDynamoDB client = clientBuilder.build();  //TODO: used to be a AmazonDynamoDBClient, need to investigate diff between these obj's
+                AmazonDynamoDB client = clientBuilder.build();
 
 
                 ScanResult result = null;
@@ -194,24 +176,18 @@ public class d2csv
                             headerList.clear();
                             headerIndexMap.clear();
                             for (int i = 0; i < colList.size(); i++) {
-                                if (isMatch(universalSchemasLiterial, colList.get(i))) {
-//                                    System.out.println("Poi～～～");
+                                if (isMatch(queriedColList, colList.get(i))) {
                                     numberList.add(i);
                                     headerList.add(colList.get(i));
                                     headerIndexMap.put(colList.get(i), i);
-                                } else {
-                                    // dou shiyou kana...
                                 }
                             }
-                            // DONE check unmatched cols
-                            for (String universalSchema : universalSchemasLiterial) {
-                                if (headerIndexMap.get(universalSchema) == null) {
-                                    headerIndexMap.put(universalSchema, dummyColNumber);
+                            // Column consistency check
+                            for (String queriedCol : queriedColList) {
+                                if (headerIndexMap.get(queriedCol) == null) {
+                                    headerIndexMap.put(queriedCol, dummyColNumber);
                                 }
                             }
-//                            System.out.println("numberList gen'ed from list: " + numberList.toString());
-//                            System.out.println("headerList gen'ed from list: " + headerList.toString());
-                            // DONE: figure out why the TreeMap doesn't work --  column mismatch
                             Iterator it = headerIndexMap.keySet().iterator();
                             numberList.clear();
                             headerList.clear();
@@ -294,10 +270,13 @@ public class d2csv
         }
     }
 
-    private boolean isMatch(List<String> queriedCol, Object o) {
+    private boolean isMatch(List<String> queriedColList, Object o) {
+        if (queriedColList.size() == 0) {
+            return true;
+        }
         String str = o.toString();
 //        System.out.println("matching column name: " + str);
-        for (String candidate: queriedCol) {
+        for (String candidate: queriedColList) {
             if (Pattern.compile("^" + candidate + "$", Pattern.CASE_INSENSITIVE).matcher(str).find()) {
                 return true;
             }
